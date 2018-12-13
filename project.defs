@@ -1,0 +1,6 @@
+{
+  dip {
+    gitOrigin "github.com:baza-winner/dip2.git"
+    branch "develop"
+  }
+}
