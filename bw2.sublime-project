@@ -3,6 +3,9 @@
 	[
 		{
 			"path": "."
+		},
+		{
+			"path": "/Users/yurybikuzin/dip2/bin"
 		}
 	]
 }
