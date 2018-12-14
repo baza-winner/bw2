@@ -5,12 +5,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
 	_ "github.com/baza-winner/bwcore/ansi/tags"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwos"
@@ -40,7 +40,7 @@ var (
 func init() {
 	projectDefsDef = bwval.MustDefFrom(bwrune.S{S: `
     {
-      type Map
+      type OrderedMap
       elem {
         type Map
         keys {
@@ -58,12 +58,8 @@ func init() {
 }
 
 func VerDir() (result string, err error) {
-	var executableFileSpec string
-	if executableFileSpec, err = os.Executable(); err != nil {
-		return
-	}
 	var linkSourceFileSpec string
-	if linkSourceFileSpec, err = os.Readlink(executableFileSpec); err != nil {
+	if linkSourceFileSpec, err = bwos.ResolveSymlink(executableFileSpec); err != nil {
 		return
 	}
 	result = filepath.Clean(filepath.Join(filepath.Dir(linkSourceFileSpec), "..", ".."))
@@ -102,26 +98,22 @@ func run() (err error) {
 				return
 			}
 
-			var projShortcuts []string
-			for projShortcut, _ := range projectDefs.MustMap() {
-				projShortcuts = append(projShortcuts, projShortcut)
-				projDef := projectDefs.MustKey(projShortcut)
-				projName := strings.TrimSuffix(filepath.Base(projDef.MustKey("gitOrigin").MustString()), ".git")
-				projectDefs.MustKey(projShortcut).MustSetKeyVal("projName", projName)
-			}
-			sort.Strings(projShortcuts)
 			projectDescription := []string{`<ansiVar>Сокращенное-имя-проекта<ansi> - одно из следующих значений:`}
-			for _, projShortcut := range projShortcuts {
-				projDef := projectDefs.MustKey(projShortcut)
+
+			projectDefs.ForEach(func(idx int, projShortcut string, projDef bwval.Holder) (needBreak bool, err error) {
+				projName := strings.TrimSuffix(filepath.Base(projDef.MustKey("gitOrigin").MustString()), ".git")
+				// bwdebug.Print("!projName", "projName", projName)
+				projDef.MustSetKeyVal("projName", projName)
 				projectDescription = append(projectDescription,
 					fmt.Sprintf(
-						`      <ansiVal>%s<ansi> - сокращение для проекта <ansiVal>%s <ansiUrl>%s`,
+						`      <ansiVal>%s<ansi> - сокращение для проекта <ansiVal>%s <ansiUrl>%s<ansi>`,
 						projShortcut,
-						projDef.MustKeyVal("projName"),
+						projName,
 						projDef.MustKeyVal("gitOrigin"),
 					),
 				)
-			}
+				return
+			})
 			app.Commands = []cli.Command{
 				{
 					Name:    "project",
@@ -136,6 +128,7 @@ func run() (err error) {
 					ArgsUsage:   ansi.String("<ansiVar>Сокращенное-имя-проекта"),
 					Description: ansi.String(strings.Join(projectDescription, "\n")),
 					Action: func(c *cli.Context) (err error) {
+
 						args := c.Args()
 						if !args.Present() {
 							err = bwerr.From("Ожидается <ansiVar>Сокращенное-имя-проекта")
@@ -161,6 +154,7 @@ func run() (err error) {
 								path.Join(bw2BinDir, projShortcut),
 							)
 						}
+
 						projDir := c.String("proj-dir")
 						if projDir == "" {
 							projDir = filepath.Join(homeDir, projDef.MustKey("projName").MustString())
@@ -174,12 +168,12 @@ func run() (err error) {
 							if conf, err = Conf(bw2Dir); err != nil {
 								return
 							}
-
-							if err = conf.SetPathVal(map[string]interface{}{}, bwval.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut, projDir}})); err != nil {
-								bwerr.PanicErr(err)
+							if err = conf.SetPathVal(
+								map[string]interface{}{},
+								bwval.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut, projDir}}),
+							); err != nil {
 								return
 							}
-
 							bwjson.ToFile(confFileSpec, conf.Val)
 						}
 						return
@@ -191,10 +185,80 @@ func run() (err error) {
 
 		}
 	} else {
-		// bw2BinDir := path.Dir(executableFileSpec)
-		// bw2Dir := filepath.Clean(filepath.Join(bw2BinDir, ".."))
-		// ProjectDefs
-		fmt.Println(executableFileName)
+		type ProjDir struct {
+			path     string
+			fileInfo os.FileInfo
+		}
+		var projDirs []ProjDir
+		var projDir ProjDir
+		var expectsProjDirValue bool
+		var projDirOption string
+		for _, s := range os.Args[1:] {
+			if !expectsProjDirValue {
+				expectsProjDirValue = s == "--proj-dir" || s == "-p"
+				projDirOption = s
+			} else {
+				if !strings.HasPrefix(s, "-") {
+					if projDir.path, err = filepath.Abs(s); err != nil {
+						return
+					}
+					if projDir.fileInfo, err = os.Stat(projDir.path); err != nil {
+						err = bwerr.From(
+							"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> <ansiErr>does not exist",
+							projDir.path,
+							projDirOption,
+						)
+						return
+					}
+					expectsProjDirValue = false
+				}
+				break
+			}
+		}
+		if expectsProjDirValue {
+			err = bwerr.From("option <ansiCmd>%s<ansi> must have value", projDirOption)
+		}
+
+		bw2BinDir := path.Dir(executableFileSpec)
+		bw2Dir := filepath.Clean(filepath.Join(bw2BinDir, ".."))
+		var conf bwval.Holder
+		if conf, err = Conf(bw2Dir); err != nil {
+			return
+		}
+		projShortcut := executableFileName
+		var needUpdateConf bool
+		hProjDirs := conf.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut}})
+		_ = hProjDirs.MustKeys(func(key string) (ok bool) {
+			if fi, err := os.Stat(key); err == nil {
+				projDirs = append(projDirs, ProjDir{path: key, fileInfo: fi})
+			} else {
+				hProjDirs.DelKey(key)
+				needUpdateConf = true
+			}
+			return
+		})
+		bwdebug.Print("executableFileName", executableFileName, "conf:json", conf.Val, "projDirs:json", projDirs)
+		switch len(projDirs) {
+		case 0:
+			err = bwerr.From("<ansiCmd>%s<ansi> is not installed, use <ansiCmd>bw2 p %s<ansi> first", projShortcut, projShortcut)
+		case 1:
+			if projDir.path == "" {
+				projDir = projDirs[0]
+			} else if projDir.path != projDirs[0].path {
+				if !os.SameFile(projDir.fileInfo, projDirs[0].fileInfo) {
+					err = bwerr.From(
+						"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> differs from installed <ansiVar>projDir<ansi> (<ansiPath>%s<ansi>)",
+						projDir,
+						projDirOption,
+						projDirs[0],
+					)
+					return
+				}
+			}
+			bwdebug.Print("projDir", projDir)
+		default:
+			bwerr.TODO()
+		}
 	}
 	return
 }
