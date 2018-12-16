@@ -15,6 +15,7 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwos"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/bwval"
 	"github.com/urfave/cli"
 )
@@ -26,6 +27,7 @@ func main() {
 }
 
 const (
+	bwFileName   = "bw2"
 	projDirUsage = "`<ansiVar>Путь-к-папке<ansi>`" + `, куда будет установлен проект
       По умолчанию, в качестве папки проекта используется ~/<ansiVar>Полное-имя-проекта<ansi>
       <ansiVar>Полное-имя-проекта<ansi> - имя проекта на github'е`
@@ -80,16 +82,17 @@ func ProjectDefs() (result bwval.Holder, err error) {
 }
 
 func run() (err error) {
-	if executableFileName == "bw2" {
+	if executableFileName == bwFileName {
 		var homeDir string
 		if homeDir, err = filepath.Abs(os.Getenv("HOME")); err != nil {
 			return
 		}
-		bw2HolderDir := filepath.Clean(filepath.Join(path.Dir(executableFileSpec), "..", ".."))
+		bwHolderDir := filepath.Clean(filepath.Join(path.Dir(executableFileSpec), "..", ".."))
+		// bwdebug.Print("bwHolderDir", bwHolderDir)
 
-		if bw2HolderDir == homeDir {
-			bw2BinDir := path.Dir(executableFileSpec)
-			bw2Dir := filepath.Clean(filepath.Join(bw2BinDir, ".."))
+		if bwHolderDir == homeDir {
+			bwBinDir := path.Dir(executableFileSpec)
+			bwDir := filepath.Clean(filepath.Join(bwBinDir, ".."))
 			app := cli.NewApp()
 			app.Usage = ansi.String("Базовая утилита bw-инфраструктуры")
 
@@ -102,7 +105,6 @@ func run() (err error) {
 
 			projectDefs.ForEach(func(idx int, projShortcut string, projDef bwval.Holder) (needBreak bool, err error) {
 				projName := strings.TrimSuffix(filepath.Base(projDef.MustKey("gitOrigin").MustString()), ".git")
-				// bwdebug.Print("!projName", "projName", projName)
 				projDef.MustSetKeyVal("projName", projName)
 				projectDescription = append(projectDescription,
 					fmt.Sprintf(
@@ -128,7 +130,6 @@ func run() (err error) {
 					ArgsUsage:   ansi.String("<ansiVar>Сокращенное-имя-проекта"),
 					Description: ansi.String(strings.Join(projectDescription, "\n")),
 					Action: func(c *cli.Context) (err error) {
-
 						args := c.Args()
 						if !args.Present() {
 							err = bwerr.From("Ожидается <ansiVar>Сокращенное-имя-проекта")
@@ -140,19 +141,14 @@ func run() (err error) {
 							return
 						}
 						projDef := projectDefs.MustKey(projShortcut)
-						projBinFileSpec := path.Join(bw2BinDir, projShortcut)
+						projBinFileSpec := path.Join(bwBinDir, projShortcut)
 						if _, e := os.Lstat(projBinFileSpec); e != nil {
 							if err = os.Symlink(
 								executableFileSpec,
-								path.Join(bw2BinDir, projShortcut),
+								projBinFileSpec,
 							); err != nil {
 								return
 							}
-							fmt.Printf(
-								"%s => %s\n",
-								path.Join(bw2BinDir, "bw2"),
-								path.Join(bw2BinDir, projShortcut),
-							)
 						}
 
 						projDir := c.String("proj-dir")
@@ -163,18 +159,18 @@ func run() (err error) {
 						}
 
 						{
-							confFileSpec := filepath.Join(bw2Dir, ".conf")
-							var conf bwval.Holder
-							if conf, err = Conf(bw2Dir); err != nil {
+							var bwConf bwval.Holder
+							var bwConfFileSpec string
+							if bwConfFileSpec, bwConf, err = BwConf(bwDir); err != nil {
 								return
 							}
-							if err = conf.SetPathVal(
+							if err = bwConf.SetPathVal(
 								map[string]interface{}{},
 								bwval.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut, projDir}}),
 							); err != nil {
 								return
 							}
-							bwjson.ToFile(confFileSpec, conf.Val)
+							bwjson.ToFile(bwConfFileSpec, bwConf.Val)
 						}
 						return
 					},
@@ -185,99 +181,164 @@ func run() (err error) {
 
 		}
 	} else {
-		type ProjDir struct {
-			path     string
-			fileInfo os.FileInfo
-		}
-		var projDirs []ProjDir
-		var projDir ProjDir
-		var expectsProjDirValue bool
-		var projDirOption string
-		for _, s := range os.Args[1:] {
-			if !expectsProjDirValue {
-				expectsProjDirValue = s == "--proj-dir" || s == "-p"
-				projDirOption = s
-			} else {
-				if !strings.HasPrefix(s, "-") {
-					if projDir.path, err = filepath.Abs(s); err != nil {
-						return
-					}
-					if projDir.fileInfo, err = os.Stat(projDir.path); err != nil {
-						err = bwerr.From(
-							"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> <ansiErr>does not exist",
-							projDir.path,
-							projDirOption,
-						)
-						return
-					}
-					expectsProjDirValue = false
-				}
-				break
-			}
-		}
-		if expectsProjDirValue {
-			err = bwerr.From("option <ansiCmd>%s<ansi> must have value", projDirOption)
-		}
-
-		bw2BinDir := path.Dir(executableFileSpec)
-		bw2Dir := filepath.Clean(filepath.Join(bw2BinDir, ".."))
-		var conf bwval.Holder
-		if conf, err = Conf(bw2Dir); err != nil {
+		var projDir string
+		if projDir, err = GetProjDir(executableFileName); err != nil {
 			return
 		}
-		projShortcut := executableFileName
-		var needUpdateConf bool
-		hProjDirs := conf.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut}})
-		_ = hProjDirs.MustKeys(func(key string) (ok bool) {
-			if fi, err := os.Stat(key); err == nil {
-				projDirs = append(projDirs, ProjDir{path: key, fileInfo: fi})
-			} else {
-				hProjDirs.DelKey(key)
-				needUpdateConf = true
-			}
+		var projConf bwval.Holder
+		if _, projConf, err = ProjConf(projDir); err != nil {
 			return
-		})
-		bwdebug.Print("executableFileName", executableFileName, "conf:json", conf.Val, "projDirs:json", projDirs)
-		switch len(projDirs) {
-		case 0:
-			err = bwerr.From("<ansiCmd>%s<ansi> is not installed, use <ansiCmd>bw2 p %s<ansi> first", projShortcut, projShortcut)
-		case 1:
-			if projDir.path == "" {
-				projDir = projDirs[0]
-			} else if projDir.path != projDirs[0].path {
-				if !os.SameFile(projDir.fileInfo, projDirs[0].fileInfo) {
-					err = bwerr.From(
-						"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> differs from installed <ansiVar>projDir<ansi> (<ansiPath>%s<ansi>)",
-						projDir,
-						projDirOption,
-						projDirs[0],
-					)
-					return
-				}
-			}
-			bwdebug.Print("projDir", projDir)
-		default:
-			bwerr.TODO()
 		}
+		bwdebug.Print(
+			"projDir", projDir,
+			"version", projConf.MustPath(bwval.PathS{S: "bw.version"}).MustUint(func() uint { return 1 }),
+		)
 	}
 	return
 }
 
-func ConfFileSpec(bw2Dir string) (result string) {
-	return filepath.Join(bw2Dir, ".conf")
+type ProjDir struct {
+	path     string
+	fileInfo os.FileInfo
 }
 
-func Conf(bw2Dir string) (result bwval.Holder, err error) {
+type ProjDirs []ProjDir
+
+func (v ProjDirs) Strings() (result []string) {
+	for _, pd := range v {
+		result = append(result,
+			fmt.Sprintf(ansi.String("<ansiPath>%s"), bwos.ShortenFileSpec(pd.path)),
+		)
+	}
+	return
+}
+
+func GetProjDir(projShortcut string) (result string, err error) {
+	var projDirs ProjDirs
+	var projDir ProjDir
+	var expectsProjDirValue bool
+	var projDirOption string
+	for _, s := range os.Args[1:] {
+		if !expectsProjDirValue {
+			expectsProjDirValue = s == "--proj-dir" || s == "-p"
+			projDirOption = s
+		} else {
+			if !strings.HasPrefix(s, "-") {
+				if projDir.path, err = filepath.Abs(s); err != nil {
+					return
+				}
+				if projDir.fileInfo, err = os.Stat(projDir.path); err != nil {
+					err = bwerr.From(
+						"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> <ansiErr>does not exist",
+						projDir.path,
+						projDirOption,
+					)
+					return
+				}
+				expectsProjDirValue = false
+			}
+			break
+		}
+	}
+	if expectsProjDirValue {
+		err = bwerr.From("option <ansiCmd>%s<ansi> must have value", projDirOption)
+	}
+
+	bwBinDir := path.Dir(executableFileSpec)
+	bwDir := filepath.Clean(filepath.Join(bwBinDir, ".."))
+	var bwConf bwval.Holder
+	var bwConfFileSpec string
+	if bwConfFileSpec, bwConf, err = BwConf(bwDir); err != nil {
+		return
+	}
+	var needUpdateConf bool
+	hProjDirs := bwConf.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut}})
+	_ = hProjDirs.MustKeys(func(key string) (ok bool) {
+		if fi, err := os.Stat(key); err == nil {
+			projDirs = append(projDirs, ProjDir{path: key, fileInfo: fi})
+		} else {
+			hProjDirs.DelKey(key)
+			needUpdateConf = true
+		}
+		return
+	})
+	if needUpdateConf {
+		bwjson.ToFile(bwConfFileSpec, bwConf.Val)
+	}
+	switch len(projDirs) {
+	case 0:
+		err = bwerr.From("<ansiCmd>%s<ansi> is not installed, use <ansiCmd>%s p %s<ansi> first", projShortcut, bwFileName, projShortcut)
+	case 1:
+		if projDir.path == "" {
+			projDir = projDirs[0]
+		} else if projDir.path != projDirs[0].path {
+			if !os.SameFile(projDir.fileInfo, projDirs[0].fileInfo) {
+				err = bwerr.From(
+					"<ansiVar>projDir <ansiPath>%s<ansi> specified by option <ansiCmd>%s<ansi> differs from installed <ansiVar>projDir<ansi> (<ansiPath>%s<ansi>)",
+					projDir,
+					projDirOption,
+					projDirs[0],
+				)
+				return
+			}
+		}
+	default:
+		if projDir.path == "" {
+			var pwd string
+			if pwd, err = os.Getwd(); err != nil {
+				return
+			}
+			for _, pd := range projDirs {
+				var ok bool
+				if ok, err = bwos.IsInPath(pd.path, pwd); err != nil {
+					return
+				} else if ok {
+					projDir = pd
+					break
+				}
+			}
+			if projDir.path == "" {
+				err = bwerr.From(
+					"must specify <ansiCmd>--proj-dir<ansi> as %s",
+					bwstr.SmartJoin(bwstr.A{
+						Source: projDirs,
+					}),
+				)
+				return
+			}
+		}
+	}
+	result = projDir.path
+	return
+}
+
+func BwConf(bwDir string) (fileSpec string, result bwval.Holder, err error) {
 	var (
 		confFromProvider     bwval.FromProvider
 		confValPathProviders []bw.ValPathProvider
 	)
-	confFileSpec := ConfFileSpec(bw2Dir)
-	if _, e := os.Stat(confFileSpec); e == nil {
-		confFromProvider = bwval.F{S: confFileSpec}
+	fileSpec = filepath.Join(bwDir, "conf.json")
+	if _, e := os.Stat(fileSpec); e == nil {
+		confFromProvider = bwval.F{S: fileSpec}
 	} else {
 		confFromProvider = bwval.V{Val: map[string]interface{}{}}
-		confValPathProviders = append(confValPathProviders, bwval.PathS{S: "$conf"})
+		confValPathProviders = append(confValPathProviders, bwval.PathS{S: "$BwConf"})
+	}
+	result, err = bwval.From(confFromProvider, confValPathProviders...)
+	return
+}
+
+func ProjConf(projDir string) (fileSpec string, result bwval.Holder, err error) {
+	var (
+		confFromProvider     bwval.FromProvider
+		confValPathProviders []bw.ValPathProvider
+	)
+	fileSpec = filepath.Join(projDir, "docker", "conf.json")
+	if _, e := os.Stat(fileSpec); e == nil {
+		confFromProvider = bwval.F{S: fileSpec}
+	} else {
+		confFromProvider = bwval.S{S: "{ bw { version 1 } }"}
+		confValPathProviders = append(confValPathProviders, bwval.PathS{S: "$ProjConf"})
 	}
 	result, err = bwval.From(confFromProvider, confValPathProviders...)
 	return
