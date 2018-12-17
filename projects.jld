@@ -1,0 +1,10 @@
+{
+  type OrderedMap
+  elem {
+    type Map
+    keys {
+      gitOrigin String
+      branch String
+    }
+  }
+}
