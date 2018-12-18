@@ -23,12 +23,21 @@ import (
 func runProjShortcut(projShortcut string, projDir string) (err error) {
 	app := cli.NewApp()
 
+	// var projectsDef bwval.Holder
+	// if projectsDef, err = ProjectsDef(); err != nil {
+	// 	return
+	// }
+	projectsDef := BwTagConf().MustKey("projects")
+	projName := projectsDef.MustPath(bwval.PathSS{SS: []string{projShortcut, "projName"}}).MustString()
+
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "proj-dir, p",
 			Usage: ansi.String("`<ansiVar>Папка-проекта<ansi>`"),
 		},
 	}
+
+	app.Usage = fmt.Sprintf(ansi.String("Базовая утилита проекта <ansiVal>%s"), projName)
 
 	portFlags := []cli.Flag{
 		cli.UintFlag{
@@ -144,11 +153,6 @@ func runProjShortcut(projShortcut string, projDir string) (err error) {
 					actualPorts[portName] = fmt.Sprintf("%d", portValue)
 				}
 
-				var projectsDef bwval.Holder
-				if projectsDef, err = ProjectsDef(); err != nil {
-					return
-				}
-				projName := projectsDef.MustPath(bwval.PathSS{SS: []string{projShortcut, "projName"}}).MustString()
 				{
 					buf := new(bytes.Buffer)
 					// t := template.Must(template.New("main.env").Parse(mainEnv))

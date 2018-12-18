@@ -1,0 +1,30 @@
+{
+  type Map
+  keys {
+    services {
+      type OrderedMap
+      elem {
+        type Map
+        keys {
+          ports {
+            type Map
+            elem {
+              type Int
+              range 1024..65535
+            }
+          }
+        }
+      }
+    }
+    projects {
+      type OrderedMap
+      elem {
+        type Map
+        keys {
+          gitOrigin String
+          branch String
+        }
+      }
+    }
+  }
+}

@@ -59,7 +59,7 @@ func run() (err error) {
 		return
 	}
 	if executableFileName == bwFileName {
-		runBw()
+		err = runBw()
 	} else if isInDocker {
 		err = runProjShortcut(executableFileName, filepath.Join(os.Getenv("HOME"), "proj"))
 	} else {
@@ -81,13 +81,13 @@ func run() (err error) {
 			bwDir = filepath.Clean(filepath.Join(ss...))
 		}
 		var projDir string
-		if projDir, _, err = GetProjDir(projShortcut, bwDir); err != nil {
+		var remainedArgs []string
+		if projDir, remainedArgs, err = GetProjDir(projShortcut, bwDir); err != nil {
 			return
 		}
 		if !isSymlink {
 			err = runProjShortcut(projShortcut, projDir)
 		} else {
-			var remainedArgs []string
 			var projConf bwval.Holder
 			if _, projConf, err = ProjConf(projDir); err != nil {
 				return

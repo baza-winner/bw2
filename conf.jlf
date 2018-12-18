@@ -1,0 +1,43 @@
+{
+  projects {
+    dip {
+      gitOrigin "github.com:baza-winner/dip2.git"
+      branch develop
+    }
+    agate {
+      gitOrigin "github.com:baza-winner/agate.git"
+      branch develop
+    }
+  }
+  services {
+    ssh {
+      ports {
+        _ 2200
+      }
+    }
+    nginx {
+      ports {
+        http 8000
+        https 4400
+      }
+    }
+    mysql {
+      ports {
+        _ 3300
+      }
+    }
+    redis {
+      ports {
+        _ 6300
+        webdis 7300
+      }
+    }
+    rabbitmq {
+      ports {
+        _ 5600
+        rabbitmq-management 15600
+      }
+    }
+  }
+}
+

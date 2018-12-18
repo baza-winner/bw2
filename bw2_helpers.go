@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwos"
@@ -81,15 +82,13 @@ func GetProjDir(projShortcut, bwDir string) (result string, remainedArgs []strin
 		err = bwerr.From("option <ansiCmd>%s<ansi> must have value", projDirOption)
 	}
 
-	// bwBinDir := path.Dir(executableFileSpec)
-	// bwDir := filepath.Clean(filepath.Join(bwBinDir, ".."))
-	// bwdebug.Print("bwDir", bwDir)
 	var bwConf bwval.Holder
 	var bwConfFileSpec string
 	if bwConfFileSpec, bwConf, err = BwConf(bwDir); err != nil {
 		return
 	}
 	var needUpdateConf bool
+	// bwdebug.Print("bwConf.Pth", bwConf.Pth)
 	hProjDirs := bwConf.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut}})
 	_ = hProjDirs.MustKeys(func(key string) (ok bool) {
 		if fi, err := os.Stat(key); err == nil {
@@ -159,63 +158,73 @@ func BwTagDir() (result string, err error) {
 	return
 }
 
-func ProjectsDef() (result bwval.Holder, err error) {
-	var bwTagDir string
-	if bwTagDir, err = BwTagDir(); err != nil {
-		return
-	}
-	if result, err = bwval.From(
-		bwval.F{S: filepath.Join(bwTagDir, "data", "projects.jlf")},
-		bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(bwTagDir, "data", "projects.jld")})},
-	); err == nil {
-		err = result.ForEach(func(idx int, projShortcut string, projDef bwval.Holder) (needBreak bool, err error) {
+var bwTagConf *bwval.Holder
+
+func BwTagConf() (result bwval.Holder) {
+	if bwTagConf == nil {
+		var (
+			bwTagDir string
+			err      error
+			h        bwval.Holder
+		)
+		if bwTagDir, err = BwTagDir(); err != nil {
+			bwerr.Err(err)
+		}
+		h = bwval.MustFrom(
+			bwval.F{S: filepath.Join(bwTagDir, "data", "conf.jlf")},
+			bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(bwTagDir, "data", "conf.jld")})},
+		)
+		_ = h.MustKey("projects").ForEach(func(idx int, projShortcut string, projDef bwval.Holder) (needBreak bool, err error) {
 			projName := strings.TrimSuffix(filepath.Base(projDef.MustKey("gitOrigin").MustString()), ".git")
 			projDef.MustSetKeyVal("projName", projName)
 			return
 		})
+		_ = h.MustKey("services").ForEach(func(idx int, serviceName string, serviceDef bwval.Holder) (needBreak bool, err error) {
+			serviceDef.MustKey("ports").ForEach(func(idx int, portName string, portValue bwval.Holder) (needBreak bool, err error) {
+				if portName == "_" {
+					portName = serviceName
+				}
+				bwval.MustSetPathVal(portValue.MustInt(), &h, bwval.PathSS{SS: []string{"availPorts", portName}})
+				return
+			})
+			return
+		})
+		bwdebug.Print("h.Val:json", h.Val)
+		bwTagConf = &h
 	}
+	result = *bwTagConf
 	return
 }
 
-func AvailPorts(projDir string) (result bwval.Holder, err error) {
+func ProjConf(projDir string) (result bwval.Holder) {
+	fileSpec := filepath.Join(projDir, "docker", "conf.jlf")
+	result = bwval.MustFrom(bwval.F{S: fileSpec})
 	return
 }
 
-func IsInDocker() (ok bool, err error) {
-	return bwos.Exists("/.dockerenv")
-}
-
-func BwConf(bwDir string) (fileSpec string, result bwval.Holder, err error) {
+func BwConf(bwDir string) (fileSpec string, result bwval.Holder) {
 	var (
 		confFromProvider bwval.FromProvider
 		confFromOpt      []bwval.O
 	)
-	fileSpec = filepath.Join(bwDir, "data", "conf.json")
-	if _, e := os.Stat(fileSpec); e == nil {
+	fileSpec = filepath.Join(bwDir, "conf.json")
+	var exists bool
+	var err error
+	if exists, err = bwos.Exists(fileSpec); err != nil {
+		bwerr.PanicErr(err)
+	}
+	if exists {
 		confFromProvider = bwval.F{S: fileSpec}
 	} else {
 		confFromProvider = bwval.V{Val: map[string]interface{}{}}
 		confFromOpt = append(confFromOpt, bwval.O{PathProvider: bwval.PathS{S: "$BwConf"}})
 	}
-	result, err = bwval.From(confFromProvider, confFromOpt...)
+	result = bwval.MustFrom(confFromProvider, confFromOpt...)
 	return
 }
 
-func ProjConf(projDir string) (fileSpec string, result bwval.Holder, err error) {
-	var (
-		confFromProvider bwval.FromProvider
-		// confValPathProviders []bw.ValPathProvider
-		confFromOpt []bwval.O
-	)
-	fileSpec = filepath.Join(projDir, "docker", "conf.jlf")
-	if _, e := os.Stat(fileSpec); e == nil {
-		confFromProvider = bwval.F{S: fileSpec}
-	} else {
-		confFromProvider = bwval.S{S: "{ bw { version 1 } }"}
-		confFromOpt = append(confFromOpt, bwval.O{PathProvider: bwval.PathS{S: "$ProjConf"}})
-	}
-	result, err = bwval.From(confFromProvider, confFromOpt...)
-	return
+func IsInDocker() (ok bool, err error) {
+	return bwos.Exists("/.dockerenv")
 }
 
 func Platform() string {

@@ -21,10 +21,7 @@ func runBw() (err error) {
 	app := cli.NewApp()
 	app.Usage = ansi.String("Базовая утилита bw-инфраструктуры")
 
-	var projectsDef bwval.Holder
-	if projectsDef, err = ProjectsDef(); err != nil {
-		return
-	}
+	projectsDef := BwTagConf().MustKey("projects")
 
 	projectDescription := []string{`<ansiVar>Сокращенное-имя-проекта<ansi> - одно из следующих значений:`}
 
@@ -97,7 +94,12 @@ func runBw() (err error) {
 					); err != nil {
 						return
 					}
-					bwjson.ToFile(bwConfFileSpec, bwConf.Val)
+					// bwdebug.Print("bwConfFileSpec", bwConfFileSpec)
+					if err = bwjson.ToFile(bwConfFileSpec, bwConf.Val); err != nil {
+						// bwdebug.Print("err", err)
+						return
+					}
+					// bwdebug.Print("err", err)
 				}
 				return
 			},
