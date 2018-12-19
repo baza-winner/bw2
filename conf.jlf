@@ -1,11 +1,11 @@
 {
   projects {
     dip {
-      gitOrigin "github.com:baza-winner/dip2.git"
+      "gitOrigin" "github.com:baza-winner/dip2.git"
       branch develop
     }
     agate {
-      gitOrigin "github.com:baza-winner/agate.git"
+      gitOrigin 'github.com:baza-winner/agate.git'
       branch develop
     }
   }
@@ -20,6 +20,7 @@
         http 8000
         https 4400
       }
+      upstream 3000
     }
     mysql {
       ports {
@@ -40,4 +41,3 @@
     }
   }
 }
-

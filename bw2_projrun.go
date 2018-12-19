@@ -12,6 +12,7 @@ import (
 	"text/template"
 
 	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwexec"
 	"github.com/baza-winner/bwcore/bwos"
 	"github.com/baza-winner/bwcore/bwosutil"
@@ -23,12 +24,7 @@ import (
 func runProjShortcut(projShortcut string, projDir string) (err error) {
 	app := cli.NewApp()
 
-	// var projectsDef bwval.Holder
-	// if projectsDef, err = ProjectsDef(); err != nil {
-	// 	return
-	// }
-	projectsDef := BwTagConf().MustKey("projects")
-	projName := projectsDef.MustPath(bwval.PathSS{SS: []string{projShortcut, "projName"}}).MustString()
+	projName := BwTagConf().MustPath(bwval.PathSS{SS: []string{"projects", projShortcut, "projName"}}).MustString()
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -44,42 +40,47 @@ func runProjShortcut(projShortcut string, projDir string) (err error) {
 			Value: 0,
 			Name:  "port-increment, i",
 			Usage: fmt.Sprintf(ansi.String(`Смещение относительно базовых значений для всех портов
-      Полезно для старта второго экземпляра docker-приложения <ansiVal>dip<ansi>
+      Полезно для старта второго экземпляра docker-приложения <ansiVal>%s<ansi>
       Примечание: второй экземпляр следует запускать из второй копии проекта, которую можно установить командой:
       <ansiCmd>bw p %s -p <ansiVar>Абсолютный-путь-к-папке-второй-копии-проекта<ansi>
       `+"`<ansiVar>Значение<ansi>` - неотрицательное целое число"+`
       <ansiVar>Значение<ansi> по умолчанию: 0
-    `), projShortcut),
+    `), projShortcut, projShortcut),
 		},
 	}
 	type Port struct {
 		name string
 		base uint
 	}
-	ports := []Port{
-		{name: "ssh", base: 2200},
-		{name: "http", base: 8000},
-		{name: "https", base: 4400},
-		{name: "mysql", base: 3300},
-		{name: "redis", base: 6300},
-		{name: "webdis", base: 7300},
-		{name: "rabbitmq", base: 5600},
-		{name: "rabbitmq-management", base: 15600},
+	availPorts := BwTagConf().MustKey("availPorts")
+	projPorts := ProjConf(projDir).MustKey("ports")
+	for _, portName := range projPorts.MustKeys() {
+		if !availPorts.HasKey(portName) {
+			err = bwerr.From("unexpected <ansiPath>%s.<ansiErr>%s", projPorts.Pth.String(), portName)
+			return
+		}
 	}
-	projBase := uint(8)
-	for _, v := range ports {
-		portFlags = append(portFlags,
-			cli.UintFlag{
-				Value: 0,
-				Name:  v.name,
-				Usage: fmt.Sprintf(ansi.String(`
+	var ports []Port
+	projBase := ProjConf(projDir).MustKey("projPortIncrement").MustUint()
+	_ = BwTagConf().MustKey("availPorts").ForEach(func(idx int, portName string, portBaseHolder bwval.Holder) (needBreak bool, err error) {
+		if projPorts.HasKey(portName) {
+			portBase := portBaseHolder.MustUint()
+			ports = append(ports, Port{name: portName, base: portBase})
+			portFlags = append(portFlags,
+				cli.UintFlag{
+					Value: 0,
+					Name:  portName,
+					Usage: fmt.Sprintf(ansi.String(`
       %s-порт по которому будет доступно docker-приложение
       `+"`<ansiVar>Значение<ansi>` - целое число из диапазона <ansiVal>1024..65535<ansi>"+`
       <ansiVar>Значение<ansi> по умолчанию: <ansiVar>%d + portIncrement
-            `), v.name, v.base+projBase),
-			},
-		)
-	}
+            `), portName, portBase+projBase),
+				},
+			)
+		}
+		return
+	})
+
 	portFlags = append(portFlags,
 		cli.UintFlag{
 			Value: 3000,

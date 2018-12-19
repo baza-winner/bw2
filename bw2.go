@@ -88,11 +88,7 @@ func run() (err error) {
 		if !isSymlink {
 			err = runProjShortcut(projShortcut, projDir)
 		} else {
-			var projConf bwval.Holder
-			if _, projConf, err = ProjConf(projDir); err != nil {
-				return
-			}
-			bwTag := projConf.MustPath(bwval.PathS{S: "bw.tag"}).MustString(func() string { return "v1" })
+			bwTag := ProjConf(projDir).MustPath(bwval.PathS{S: "bw.tag"}).MustString(func() string { return "v1" })
 			platformSpecificBinDir := filepath.Join(bwDir, bwTag, "bin", Platform())
 			specificBwFileSpec := filepath.Join(platformSpecificBinDir, bwFileName)
 			specificProjFileSpec := filepath.Join(platformSpecificBinDir, projShortcut)

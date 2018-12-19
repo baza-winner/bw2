@@ -1,8 +1,22 @@
 {
-  type Map
+  type <Map>
   keys {
+    projects {
+      type [OrderedMap]
+      elem {
+        type Map
+        keys {
+          gitOrigin String
+          branch String
+        }
+      }
+      default {
+        some thing
+        good 273
+      }
+    }
     services {
-      type OrderedMap
+      type [ArrayOf]
       elem {
         type Map
         keys {
@@ -15,14 +29,27 @@
           }
         }
       }
-    }
-    projects {
-      type OrderedMap
-      elem {
-        type Map
-        keys {
-          gitOrigin String
-          branch String
+      keys {
+        nginx {
+          type Map
+          keys {
+            // ports {{$keys.(some).services.elem.keys.ports}}
+            // ports {{$keys.services.elem.keys.ports}}
+            // upstream {{$"keys".services.elem.keys.ports.elem}}
+            ports {
+              type Map
+              elem {
+                type Int
+                range 1024..65535
+              }
+            }
+            upstream {
+              type Int
+              range 1024..65535
+              isOptional true
+              default <>
+            }
+          }
         }
       }
     }

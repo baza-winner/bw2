@@ -85,9 +85,7 @@ func runBw() (err error) {
 				{
 					var bwConf bwval.Holder
 					var bwConfFileSpec string
-					if bwConfFileSpec, bwConf, err = BwConf(bwDir); err != nil {
-						return
-					}
+					bwConfFileSpec, bwConf = BwConf(bwDir)
 					if err = bwConf.SetPathVal(
 						map[string]interface{}{},
 						bwval.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut, projDir}}),

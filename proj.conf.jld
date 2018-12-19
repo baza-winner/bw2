@@ -1,0 +1,20 @@
+{
+  type Map
+  keys {
+    bw {
+      type Map
+      keys {
+        tag String
+      }
+    }
+    projPortIncrement {
+      type Int
+      range 1..64511
+    }
+    ports {
+      type Map
+      // keysEnum $portNames
+      elem Map
+    }
+  }
+}

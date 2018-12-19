@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwos"
@@ -84,9 +83,7 @@ func GetProjDir(projShortcut, bwDir string) (result string, remainedArgs []strin
 
 	var bwConf bwval.Holder
 	var bwConfFileSpec string
-	if bwConfFileSpec, bwConf, err = BwConf(bwDir); err != nil {
-		return
-	}
+	bwConfFileSpec, bwConf = BwConf(bwDir)
 	var needUpdateConf bool
 	// bwdebug.Print("bwConf.Pth", bwConf.Pth)
 	hProjDirs := bwConf.MustPath(bwval.PathSS{SS: []string{"projects", projShortcut}})
@@ -149,27 +146,25 @@ func GetProjDir(projShortcut, bwDir string) (result string, remainedArgs []strin
 	return
 }
 
-func BwTagDir() (result string, err error) {
-	var linkSourceFileSpec string
-	if linkSourceFileSpec, err = bwos.ResolveSymlink(executableFileSpec); err != nil {
-		return
+var bwTagDir string
+
+func BwTagDir() string {
+	if len(bwTagDir) == 0 {
+		if linkSourceFileSpec, err := bwos.ResolveSymlink(executableFileSpec); err != nil {
+			bwerr.PanicErr(err)
+		} else {
+			bwTagDir = filepath.Clean(filepath.Join(filepath.Dir(linkSourceFileSpec), "..", ".."))
+		}
 	}
-	result = filepath.Clean(filepath.Join(filepath.Dir(linkSourceFileSpec), "..", ".."))
-	return
+	return bwTagDir
 }
 
 var bwTagConf *bwval.Holder
 
 func BwTagConf() (result bwval.Holder) {
 	if bwTagConf == nil {
-		var (
-			bwTagDir string
-			err      error
-			h        bwval.Holder
-		)
-		if bwTagDir, err = BwTagDir(); err != nil {
-			bwerr.Err(err)
-		}
+		var h bwval.Holder
+		bwTagDir := BwTagDir()
 		h = bwval.MustFrom(
 			bwval.F{S: filepath.Join(bwTagDir, "data", "conf.jlf")},
 			bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(bwTagDir, "data", "conf.jld")})},
@@ -189,16 +184,29 @@ func BwTagConf() (result bwval.Holder) {
 			})
 			return
 		})
-		bwdebug.Print("h.Val:json", h.Val)
 		bwTagConf = &h
 	}
 	result = *bwTagConf
 	return
 }
 
+var projConfs map[string]bwval.Holder
+
+// func ProjConfFileSpec(projDir string) string { return filepath.Join(projDir, "docker", "conf.jlf") }
+
 func ProjConf(projDir string) (result bwval.Holder) {
-	fileSpec := filepath.Join(projDir, "docker", "conf.jlf")
-	result = bwval.MustFrom(bwval.F{S: fileSpec})
+	if projConfs == nil {
+		projConfs = map[string]bwval.Holder{}
+	}
+	var ok bool
+	if result, ok = projConfs[projDir]; !ok {
+		result = bwval.MustFrom(
+			bwval.F{S: filepath.Join(projDir, "docker", "conf.jlf")},
+			bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(BwTagDir(), "data", "proj.conf.jld")})},
+			// bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(projDir, "docker", "conf.jld")})},
+		)
+		projConfs[projDir] = result
+	}
 	return
 }
 
