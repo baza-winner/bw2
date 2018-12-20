@@ -1,44 +1,45 @@
-{
+^{
   type <Map>
-  keys {
+  keysDef {
     projects {
       type [OrderedMap]
-      elem {
+      elemDef {
         type Map
-        keys {
+        keysDef {
           gitOrigin String
           branch String
         }
       }
       default {
         some thing
-        good 273
+        "g\\\"\'oo\nd" 273
+        'anoth\\er' word
       }
     }
     services {
       type [ArrayOf]
-      elem {
+      elemDef {
         type Map
-        keys {
+        keysDef {
           ports {
             type Map
-            elem {
+            elemDef {
               type Int
               range 1024..65535
             }
           }
         }
       }
-      keys {
+      keysDef {
         nginx {
           type Map
-          keys {
-            // ports {{$keys.(some).services.elem.keys.ports}}
-            // ports {{$keys.services.elem.keys.ports}}
-            // upstream {{$"keys".services.elem.keys.ports.elem}}
+          keysDef {
+            // ports $($keysDef.(some).services.elem.keysDef.ports)
+            // ports $(keysDef.services.elem.keysDef.ports)
+            // upstream {{$"keysDef".services.elem.keysDef.ports.elem}}
             ports {
               type Map
-              elem {
+              elemDef {
                 type Int
                 range 1024..65535
               }

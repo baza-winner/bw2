@@ -1,11 +1,76 @@
+
+$portDef = ^{
+  type Int
+  range 1024..65535
+}
+
+$portsDef = ^{
+  type Map
+  elemDef ($portDef)
+}
+
+$github = "github.com:baza-winner"
+$gitExt = ".git"
+$gitOrigin = $concat[
+  ($github:^String)
+  '/'
+  (..:projName)
+  ($gitExt:^String)
+]
+
+$projectsDef = ^{
+  type [OrderedMap]
+  elemDef {
+    type Map
+    keysDef {
+      gitOrigin {
+        type String
+        default ($gitOrigin)
+      }
+      branch {
+        type String
+        default develop
+      }
+    }
+  }
+}
+
+$servicesDef = ^{
+  type [ArrayOf]
+  elemDef {
+    type Map
+    keysDef {
+      ports ($portsDef)
+    }
+  }
+  keysDef {
+    nginx {
+      type Map
+      keysDef {
+        ports ($portsDef)
+        upstream? ($portDef)
+      }
+    }
+  }
+}
+
+$^ = {
+  type Map
+  keysDef {
+    projects ($projectsDef)
+    services ($servicesDef)
+  }
+}
+
 {
   projects {
     dip {
-      "gitOrigin" "github.com:baza-winner/dip2.git"
+      projShortcut (..:$key)
+      projName dip2
       branch develop
     }
     agate {
-      gitOrigin 'github.com:baza-winner/agate.git'
+      projName agate
       branch develop
     }
   }
