@@ -1,3 +1,4 @@
+$portRange = %($bwTagDir)/data/conf.jlf|range
 ^{
   type Map
   keysDef {
@@ -9,24 +10,10 @@
     }
     projPortIncrement {
       type Int
-      range 1..64511
-      range ($some)..($thing)
-      range $concat[ some ]..$join <some thing>
-      enum <some>
-      enum ($var:^{ type <ArrayOf String> })
-      default ($var)
-      default {
-       some -123..456
-       thing ($some)..123
-       good $concat[]..$join[]
-      }
+      range 0..($portRange|max - $portRange|min)
     }
     ports {
       type Map
-      keys "some"
-      keys ($portNames:^{ type Array elemDef String })
-      keys [ ($portNames:^{ type <ArrayOf String> }) <some thing> "good" bad]
-      keys <some thing>
       elemDef Map
     }
   }

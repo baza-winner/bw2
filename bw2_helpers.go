@@ -167,7 +167,7 @@ func BwTagConf() (result bwval.Holder) {
 		bwTagDir := BwTagDir()
 		h = bwval.MustFrom(
 			bwval.F{S: filepath.Join(bwTagDir, "data", "conf.jlf")},
-			bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(bwTagDir, "data", "conf.jld")})},
+			// bwval.O{Def: bwval.MustDefFrom(bwrune.F{S: filepath.Join(bwTagDir, "data", "conf.jld")})},
 		)
 		_ = h.MustKey("projects").ForEach(func(idx int, projShortcut string, projDef bwval.Holder) (needBreak bool, err error) {
 			projName := strings.TrimSuffix(filepath.Base(projDef.MustKey("gitOrigin").MustString()), ".git")

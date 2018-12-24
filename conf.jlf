@@ -4,28 +4,33 @@ $portDef = ^{
   range 1024..65535
 }
 
+$portDef = ^{
+  type Int
+  range 1024..65535
+}
+
 $portsDef = ^{
   type Map
-  elemDef ($portDef)
+  elemDef $portDef
 }
 
 $github = "github.com:baza-winner"
 $gitExt = ".git"
-$gitOrigin = $concat[
+$gitOrigin = concat([
   ($github:^String)
   '/'
   (..:projName)
   ($gitExt:^String)
-]
+])
 
 $projectsDef = ^{
-  type [OrderedMap]
+  type [Map]
   elemDef {
     type Map
     keysDef {
       gitOrigin {
         type String
-        default ($gitOrigin)
+        default $gitOrigin
       }
       branch {
         type String
@@ -40,15 +45,15 @@ $servicesDef = ^{
   elemDef {
     type Map
     keysDef {
-      ports ($portsDef)
+      ports $portsDef
     }
   }
   keysDef {
     nginx {
       type Map
       keysDef {
-        ports ($portsDef)
-        upstream? ($portDef)
+        ports $portsDef
+        upstream? $portDef
       }
     }
   }
@@ -57,15 +62,15 @@ $servicesDef = ^{
 $^ = {
   type Map
   keysDef {
-    projects ($projectsDef)
-    services ($servicesDef)
+    projects $projectsDef
+    services $servicesDef
   }
 }
 
 {
-  projects {
+  "projects": {
     dip {
-      projShortcut (..:$key)
+      projShortcut *..:$key
       projName dip2
       branch develop
     }
