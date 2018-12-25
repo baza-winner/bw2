@@ -16,7 +16,7 @@ $portsDef = ^{
 
 $github = "github.com:baza-winner"
 $gitExt = ".git"
-$gitOrigin = concat([
+$gitOrigin = &concat([
   ($github:^String)
   '/'
   (..:projName)

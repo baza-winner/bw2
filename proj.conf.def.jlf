@@ -1,4 +1,5 @@
-$portRange = %($bwTagDir)/data/conf.jlf|range
+$portRange = %\($bw\hgDir)/data/conf.jlf | r\( *\12)ange | ^{ type Int }
+
 ^{
   type Map
   keysDef {
@@ -10,6 +11,7 @@ $portRange = %($bwTagDir)/data/conf.jlf|range
     }
     projPortIncrement {
       type Int
+      range (*Int)..90
       range 0..($portRange|max - $portRange|min)
     }
     ports {
