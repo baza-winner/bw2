@@ -1,8 +1,8 @@
 ^{
-  type <Map>
+  type Map
   keysDef {
     projects {
-      type [OrderedMap]
+      type [Map]
       elemDef {
         type Map
         keysDef {
@@ -48,7 +48,6 @@
               type Int
               range 1024..65535
               isOptional true
-              default <>
             }
           }
         }

@@ -1,36 +1,36 @@
 
-$portDef = ^{
+#portDef(#a, #b) = ^{
   type Int
   range 1024..65535
 }
 
-$portDef = ^{
+#portDef = ^{
   type Int
   range 1024..65535
 }
 
-$portsDef = ^{
+#portsDef() = ^{
   type Map
-  elemDef $portDef
+  elemDef #portDef
 }
 
-$github = "github.com:baza-winner"
-$gitExt = ".git"
-$gitOrigin = &concat([
-  ($github:^String)
-  '/'
-  (..:projName)
+#github = "github.com:baza-winner"
+#gitExt = ".git"
+#gitOrigin = $concat([
+  (#github|^String)
+  "/"
+  (*..|projName)
   ($gitExt:^String)
 ])
 
-$projectsDef = ^{
+#projectsDef = ^{
   type [Map]
   elemDef {
     type Map
     keysDef {
       gitOrigin {
         type String
-        default $gitOrigin
+        default #gitOrigin
       }
       branch {
         type String
@@ -40,7 +40,7 @@ $projectsDef = ^{
   }
 }
 
-$servicesDef = ^{
+#servicesDef = ^{
   type [ArrayOf]
   elemDef {
     type Map
