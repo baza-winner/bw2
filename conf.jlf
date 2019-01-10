@@ -1,36 +1,36 @@
 
-#portDef(#a, #b) = ^{
+!portRange = 1024..65535
+
+!portDef = ^{
   type Int
-  range 1024..65535
+  range ($portRange()
 }
 
-#portDef = ^{
-  type Int
-  range 1024..65535
-}
-
-#portsDef() = ^{
+!portsDef = ^{
   type Map
-  elemDef #portDef
+  elemDef ($portDef)
 }
 
-#github = "github.com:baza-winner"
-#gitExt = ".git"
-#gitOrigin = $concat([
-  (#github|^String)
-  "/"
-  (*..|projName)
-  ($gitExt:^String)
-])
+!ports = {
+  ports $portsDef
+}
 
-#projectsDef = ^{
+!github = github.com:baza-winner
+!gitExt = .git
+!gitOrigin = \($github)/\(*..|projName)\($gitExt)
+
+!projectsDef = ^{
   type [Map]
   elemDef {
     type Map
     keysDef {
+      projShortcut {
+        type String
+        default (*..|$Key)
+      }
       gitOrigin {
         type String
-        default #gitOrigin
+        default ($gitOrigin)
       }
       branch {
         type String
@@ -40,37 +40,36 @@
   }
 }
 
-#servicesDef = ^{
+!servicesDef = ^{
   type [ArrayOf]
   elemDef {
     type Map
-    keysDef {
-      ports $portsDef
-    }
+    keysDef $ports
   }
   keysDef {
     nginx {
       type Map
-      keysDef {
-        ports $portsDef
-        upstream? $portDef
-      }
+      keysDef ($ports + {
+        upstream? ($portDef?)
+      })
     }
   }
 }
 
-$^ = {
+!^ {
   type Map
   keysDef {
-    projects $projectsDef
+    portRange Range
+    projects ($projectsDef)
     services $servicesDef
   }
 }
 
 {
-  "projects": {
+
+  portRange ($proj.conf.def|portRange)
+  projects {
     dip {
-      projShortcut *..:$key
       projName dip2
       branch develop
     }
@@ -110,4 +109,16 @@ $^ = {
       }
     }
   }
+  ports (*services[][ports][]{
+    type Map
+    key (
+      ($_|$Key) == "_" ?
+        ($_|$Key) :
+        ($_|..|..|$Key)
+    )
+    elem {
+      type String
+      value ($_|$Value)
+    }
+  })
 }

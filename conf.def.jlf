@@ -10,11 +10,6 @@
           branch String
         }
       }
-      default {
-        some thing
-        "g\\\"\'oo\nd" 273
-        'anoth\\er' word
-      }
     }
     services {
       type [ArrayOf]

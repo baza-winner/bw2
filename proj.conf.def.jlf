@@ -1,4 +1,5 @@
-$portRange = %\($bw\hgDir)/data/conf.jlf | r\( *\12)ange | ^{ type Int }
+!conf = (%\($bw\hgDir)/data/conf.jlf)
+!portRange = ($conf|portRange^Range ?)
 
 ^{
   type Map
@@ -9,13 +10,13 @@ $portRange = %\($bw\hgDir)/data/conf.jlf | r\( *\12)ange | ^{ type Int }
         tag String
       }
     }
-    projPortIncrement {
+    projPortIncrement ^{
       type Int
-      range (*Int)..90
-      range 0..($portRange|max - $portRange|min)
+      range 0..(($portRange|max?) - ($portRange|min))
     }
-    ports {
+    ports ^{
       type Map
+      keys ( $conf|ports )
       elemDef Map
     }
   }
