@@ -1,36 +1,48 @@
 
-!portRange = 1024..65535
+${}
 
-!portDef = ^{
+$portRange = 1024..65535
+
+$portDef{
+  isOptional {
+    type Bool
+    default false
+  }
+} = ^{
   type Int
-  range ($portRange()
+  range $portRange
+  isOptional $isOptional
 }
 
-!portsDef = ^{
+$portsDef = ^{
   type Map
-  elemDef ($portDef)
+  elemDef $portDef
 }
 
-!ports = {
+$ports{
+  hasUpstream? Bool
+} = {
   ports $portsDef
-}
+} + hasUpstream
 
-!github = github.com:baza-winner
-!gitExt = .git
-!gitOrigin = \($github)/\(*..|projName)\($gitExt)
+// !github -> github.com:baza-winner
+// !gitExt = .git
+// !gitOrigin = \($github)/\(*..|projName)\($gitExt)
+// !gitOrigin = github.com:baza-winner/\(*..|projName).git
 
-!projectsDef = ^{
+$projectsDef = ^{
   type [Map]
   elemDef {
     type Map
     keysDef {
       projShortcut {
         type String
-        default (*..|$Key)
+        default *..|$Key
       }
       gitOrigin {
         type String
-        default ($gitOrigin)
+        // default $gitOrigin
+        default github.com:baza-winner/\(*..|projName).git
       }
       branch {
         type String
@@ -40,7 +52,7 @@
   }
 }
 
-!servicesDef = ^{
+$servicesDef = ^{
   type [ArrayOf]
   elemDef {
     type Map
@@ -50,24 +62,54 @@
     nginx {
       type Map
       keysDef ($ports + {
-        upstream? ($portDef?)
+        upstream $portDef{isOptional true}
       })
     }
   }
 }
 
-!^ {
+$^ {
   type Map
   keysDef {
     portRange Range
-    projects ($projectsDef)
+    projects $projectsDef
     services $servicesDef
   }
 }
 
-{
+// !key{_node Any} => $_node|$Key
 
-  portRange ($proj.conf.def|portRange)
+// !portsGen{_node String} => &{
+//   type Map
+//   key (
+//     $_node|$key == "_" ?
+//       $_node|$Key :
+//       $_node|..|..|$Key
+//   )
+//   elem {
+//     type String
+//     value $_node
+//   }
+// }
+
+// !ports{_services Map} => $_services|[][ports][]$portsGen
+
+$ports = {
+  ports *services|[][ports][]{
+    type Map
+    key
+      $_|$key == "_" ?
+        (!$_|$Key && some) :
+        !$_|..|..|$Key
+    elem {
+      type String
+      value $_
+    }
+  }
+}
+
+{
+  portRange $portRange
   projects {
     dip {
       projName dip2
@@ -109,16 +151,5 @@
       }
     }
   }
-  ports (*services[][ports][]{
-    type Map
-    key (
-      ($_|$Key) == "_" ?
-        ($_|$Key) :
-        ($_|..|..|$Key)
-    )
-    elem {
-      type String
-      value ($_|$Value)
-    }
-  })
 }
++ $ports
