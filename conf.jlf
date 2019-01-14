@@ -1,24 +1,67 @@
 
-${}
+${
+  . Func -> Any // current node
+  .. Func{
+    of Any
+    up Int{range 1.. default 1 }
+  } -> [Array Map] // parent node
 
-$.{} = {} // current node
-$..{ _of Any } = {} // parent node
+  Key Func{of Any} -> String
+  Idx Func{of Any} -> Int
+
+  \| Func{lhs Map key String} -> Any
+  \| Func{lhs Array idx Int} -> Any
+  \| Func{lhs Any def Def:Def} -> Any
+  \| Func{lhs Any func Any} -> Any
+
+  \+ Func{[lhs rhs] Int} -> Int
+  \+ Func{lhs Number rhs Number} -> Number
+  \- Func{[lhs rhs] Int} -> Int
+  \- Func{lhs Int rhs Number} -> Number
+
+  \- Func{lhs Number rhs Int} -> Number
+  \- Func{lhs Number rhs Number} -> Number
+
+  \== Func{lhs Null rhs Int} -> Bool
+  \== Func{lhs Int rhs Null} -> Bool
+
+  \== Func{lhs Null rhs Number} -> Bool
+  \== Func{lhs Number rhs Null} -> Bool
+
+  \== Func{lhs Null rhs Null} -> Bool
+
+  \== Func{lhs Int rhs Int} -> Bool
+  \== Func{lhs Number rhs Number} -> Bool
+}
+
+// $.{} -> ^Any // current node
+// $..{
+//   of Any
+//   up Int{
+//     range 1..
+//     default 1
+//   }
+// } -> ^[Array Map] // parent node
+
+// $Key{ of Any } -> ^[String Null]
+// $Idx{ of Any } -> ^[Int Null]
+// $ElemOf{ key String } -> Any
+// $ElemOf{ idx Int } -> Any
+
+// $Key{ _of Any } -> ^{ type [String Null] }
 
 $portRange = 1024..65535
 
 $portDef{
-  isOptional {
-    type Bool
+  isOptional Bool{
     default false
   }
-} = ^{
-  type Int
+} = Def:Int{
   range $portRange
   isOptional $isOptional
 }
 
-$portsDef = ^{
-  type Map
+$portsDef = Def:Map{
   elemDef $portDef
 }
 
@@ -31,46 +74,38 @@ $ports = {
 // !gitOrigin = \($github)/\(*..|projName)\($gitExt)
 // !gitOrigin = github.com:baza-winner/\(*..|projName).git
 
-$projectsDef = ^{
-  type [Map]
+$projectsDef = Def:Map{
   elemDef {
     type Map
     keysDef {
-      projShortcut {
-        type String
-        default $.|$..|$Key
+      projShortcut String{
+        default $.|$..|$Key|!
       }
-      gitOrigin {
-        type String
-        // default $gitOrigin
-        default github.com:baza-winner/\( $..|projName ).git
+      gitOrigin String{
+        default github.com:baza-winner/\< $..|projName >.git
       }
-      branch {
-        type String
+      branch String{
         default develop
       }
     }
   }
 }
 
-$servicesDef = ^{
-  type [ArrayOf]
-  elemDef {
-    type Map
+$servicesDef = Def:Map{
+  elemDef Map{
     keysDef $ports
   }
   keysDef {
-    nginx {
-      type Map
-      keysDef ($ports + {
+    nginx Map{
+      keysDef {
+        $ports...
         upstream $portDef{isOptional true}
-      })
+      }
     }
   }
 }
 
-$^ {
-  type Map
+$Def Map{
   keysDef {
     portRange Range
     projects $projectsDef
@@ -80,33 +115,24 @@ $^ {
 
 // !key{_node Any} => $_node|$Key
 
-// !portsGen{_node String} => &{
-//   type Map
-//   key (
-//     $_node|$key == "_" ?
-//       $_node|$Key :
-//       $_node|..|..|$Key
-//   )
-//   elem {
-//     type String
-//     value $_node
+$portsGen{node String} => Gen:Map{
+  (
+    $node|$key == "_" ?
+      $node|$Key :
+      $node|..|..|$Key
+  ) => $node
+}
+
+// $ports{_services Map} => $_services|[][ports][]$portsGen
+
+// $ports = {
+//   ports $Ref(services)|[][ports][]Map{
+//     (
+//       $_|$Key == "_" ? $Key($_) :
+//         $_|$..(2)|$Key
+//     ) => $_
 //   }
 // }
-
-// !ports{_services Map} => $_services|[][ports][]$portsGen
-
-$ports = {
-  ports $Ref(services)|[][ports][]{
-    type Map
-    key
-      $_|$Key == "_" ? $_|$Key :
-        $_|..|..|$Key
-    elem {
-      type String
-      value $_
-    }
-  }
-}
 
 {
   portRange $portRange
@@ -151,5 +177,11 @@ $ports = {
       }
     }
   }
-  $ports...
+  ports $Ref(services)|[][ports][]Map{
+    (
+      $_|$Key == "_" ? $Key($_) :
+        $_|$..(2)|$Key
+    ) => $_
+  }
+  // $ports...
 }

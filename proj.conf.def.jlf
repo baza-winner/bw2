@@ -1,28 +1,30 @@
 ${
   bwDir String
+  // File Func{path String} -> ^Any
+  parseExpr Func{
+    varDefs KeysDef
+  } -> Int
+  callFunc Func{
+    nullOnFail Bool
+  } -> Any
 }
 
-$File{ _path String } nil
 
-$conf = $File(\($bwgDir)/data/conf.jlf)
-$ports{_conf Map} = $_conf|ports
-$portRange = ($conf|portRange|^Range?)
+$conf = $File(\<$bwgDir>/data/conf.jlf)
+$ports{conf Map} = $conf|ports
+$portRange = $conf|portRange|Def:Range
 
-^{
-  type Map
-  keysDef {
-    bw {
-      type Map
-      keysDef {
-        tag String
+Def:Map{
+  keysDef KeysDef{
+    bw Def:Map{
+      keysDef KeysDef{
+        (/tag/igm)? String
       }
     }
-    projPortIncrement ^{
-      type Int
+    projPortIncrement Int{
       range 0..($portRange|max - $portRange|min)
     }
-    ports ^{
-      type Map
+    ports Map{
       keys $conf|$ports
       elemDef Map
     }
