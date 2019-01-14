@@ -2,7 +2,9 @@ ${
   bwDir String
 }
 
-$conf = %\($bwgDir)/data/conf.jlf
+$File{ _path String } nil
+
+$conf = $File(\($bwgDir)/data/conf.jlf)
 $ports{_conf Map} = $_conf|ports
 $portRange = $conf|portRange|^Range
 

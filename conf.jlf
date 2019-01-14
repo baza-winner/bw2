@@ -1,6 +1,9 @@
 
 ${}
 
+$.{} = {} // current node
+$..{ _of Any } = {} // parent node
+
 $portRange = 1024..65535
 
 $portDef{
@@ -19,11 +22,9 @@ $portsDef = ^{
   elemDef $portDef
 }
 
-$ports{
-  hasUpstream? Bool
-} = {
+$ports = {
   ports $portsDef
-} + hasUpstream
+}
 
 // !github -> github.com:baza-winner
 // !gitExt = .git
@@ -37,12 +38,12 @@ $projectsDef = ^{
     keysDef {
       projShortcut {
         type String
-        default *..|$Key
+        default $.|$..|$Key
       }
       gitOrigin {
         type String
         // default $gitOrigin
-        default github.com:baza-winner/\(*..|projName).git
+        default github.com:baza-winner/\( $..|projName ).git
       }
       branch {
         type String
@@ -95,12 +96,11 @@ $^ {
 // !ports{_services Map} => $_services|[][ports][]$portsGen
 
 $ports = {
-  ports *services|[][ports][]{
+  ports $Ref(services)|[][ports][]{
     type Map
     key
-      $_|$key == "_" ?
-        (!$_|$Key && some) :
-        !$_|..|..|$Key
+      $_|$Key == "_" ? $_|$Key :
+        $_|..|..|$Key
     elem {
       type String
       value $_
@@ -151,5 +151,5 @@ $ports = {
       }
     }
   }
+  $ports...
 }
-+ $ports
