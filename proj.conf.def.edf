@@ -18,7 +18,10 @@ Def:Map{
   keysDef KeysDef{
     bw Def:Map{
       keysDef KeysDef{
-        (/tag/igm)? String
+        /.*/ Int
+        ($_ =~ /t?[a].g*/igm)? String
+        // some Int
+        /t?[a].g*/igm String
       }
     }
     projPortIncrement Int{

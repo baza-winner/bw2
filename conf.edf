@@ -139,11 +139,9 @@ $portsGen{node String} => Gen:Map{
   projects {
     dip {
       projName dip2
-      branch develop
     }
     agate {
       projName agate
-      branch develop
     }
   }
   services {
