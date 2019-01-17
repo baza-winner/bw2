@@ -105,14 +105,6 @@ $servicesDef = Def:Map{
   }
 }
 
-$Def Map{
-  keysDef {
-    portRange Range
-    projects $projectsDef
-    services $servicesDef
-  }
-}
-
 // !key{_node Any} => $_node|$Key
 
 $portsGen{node String} => Gen:Map{
@@ -133,6 +125,14 @@ $portsGen{node String} => Gen:Map{
 //     ) => $_
 //   }
 // }
+
+^Map{
+  keysDef {
+    portRange Range
+    projects $projectsDef
+    services $servicesDef
+  }
+}
 
 {
   portRange $portRange
