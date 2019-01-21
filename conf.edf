@@ -1,38 +1,38 @@
 
-${
-  . Func -> Any // current node
-  .. Func{
-    of Any
-    up Int{range 1.. default 1 }
-  } -> [Array Map] // parent node
+// ${
+//   . Func -> Any // current node
+//   .. Func{
+//     of Any
+//     up Int{range 1.. default 1 }
+//   } -> [Array Map] // parent node
 
-  Key Func{of Any} -> String
-  Idx Func{of Any} -> Int
+//   Key Func{of Any} -> String
+//   Idx Func{of Any} -> Int
 
-  \| Func{lhs Map key String} -> Any
-  \| Func{lhs Array idx Int} -> Any
-  \| Func{lhs Any def Def:Def} -> Any
-  \| Func{lhs Any func Any} -> Any
+//   \| Func{lhs Map key String} -> Any
+//   \| Func{lhs Array idx Int} -> Any
+//   \| Func{lhs Any def Def:Def} -> Any
+//   \| Func{lhs Any func Any} -> Any
 
-  \+ Func{[lhs rhs] Int} -> Int
-  \+ Func{lhs Number rhs Number} -> Number
-  \- Func{[lhs rhs] Int} -> Int
-  \- Func{lhs Int rhs Number} -> Number
+//   \+ Func{[lhs rhs] Int} -> Int
+//   \+ Func{lhs Number rhs Number} -> Number
+//   \- Func{[lhs rhs] Int} -> Int
+//   \- Func{lhs Int rhs Number} -> Number
 
-  \- Func{lhs Number rhs Int} -> Number
-  \- Func{lhs Number rhs Number} -> Number
+//   \- Func{lhs Number rhs Int} -> Number
+//   \- Func{lhs Number rhs Number} -> Number
 
-  \== Func{lhs Null rhs Int} -> Bool
-  \== Func{lhs Int rhs Null} -> Bool
+//   \== Func{lhs Null rhs Int} -> Bool
+//   \== Func{lhs Int rhs Null} -> Bool
 
-  \== Func{lhs Null rhs Number} -> Bool
-  \== Func{lhs Number rhs Null} -> Bool
+//   \== Func{lhs Null rhs Number} -> Bool
+//   \== Func{lhs Number rhs Null} -> Bool
 
-  \== Func{lhs Null rhs Null} -> Bool
+//   \== Func{lhs Null rhs Null} -> Bool
 
-  \== Func{lhs Int rhs Int} -> Bool
-  \== Func{lhs Number rhs Number} -> Bool
-}
+//   \== Func{lhs Int rhs Int} -> Bool
+//   \== Func{lhs Number rhs Number} -> Bool
+// } null
 
 // $.{} -> ^Any // current node
 // $..{
@@ -50,7 +50,7 @@ ${
 
 // $Key{ _of Any } -> ^{ type [String Null] }
 
-$portRange = 1024..65535
+$portRange 1024..65535
 
 $portDef{
   isOptional Bool{
@@ -132,9 +132,7 @@ $portsGen{node String} => Gen:Map{
     projects $projectsDef
     services $servicesDef
   }
-}
-
-{
+}{
   portRange $portRange
   projects {
     dip {
@@ -175,11 +173,13 @@ $portsGen{node String} => Gen:Map{
       }
     }
   }
-  ports $Ref(services)|[][ports][]Map{
-    (
+  ports $Ref(services)|[][ports][]$Gen{
+    type Map
+    key (
       $_|$Key == "_" ? $Key($_) :
         $_|$..(2)|$Key
-    ) => $_
+    )
+    value $_
   }
   // $ports...
 }
